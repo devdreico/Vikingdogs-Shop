@@ -1,0 +1,11 @@
+{
+  "name": "VikingDogs · Cuidado para tu mejor amigo",
+  "short_name": "VikingDogs",
+  "description": "Productos prácticos para cuidar y consentir a tu perro.",
+  "lang": "es-CO",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f7fc",
+  "theme_color": "#1557a6"
+}
