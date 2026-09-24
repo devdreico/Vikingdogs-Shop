@@ -92,7 +92,7 @@ function Layout({ children }) {
   const closeMenu = () => setMenuOpen(false)
 
   return <div className="app-shell">
-    <div className="announcement"><Sparkles size={14} /> Envío gratis en Colombia · Pago contra entrega o Mercado Pago · Calidad artesanal café</div>
+    <div className="announcement"><Sparkles size={14} /> Envío gratis en Colombia · Pago contra entrega o Mercado Pago · Accesorios para perros</div>
     <header className="site-header">
       <button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menú"><Menu size={21} /></button>
       <Link className="brand" to="/" onClick={closeMenu} aria-label="VikingDogs inicio">
@@ -109,7 +109,7 @@ function Layout({ children }) {
       </button>
     </header>
     <main>{children}</main>
-    <footer className="site-footer"><div><Link className="brand footer-brand" to="/"><img className="brand-logo" src={LOGO} alt="" /><span>vikingdogs</span></Link></div><div className="footer-links"><Link to="/catalogo">Catálogo</Link><a href={WHATSAPP_URL} target="_blank" rel="noreferrer">WhatsApp</a><span>Funza · Cra 19 Bis #9-15</span></div><small>© 2026 VikingDogs</small><small className="footer-service">Cuidado premium, paseo y bienestar canino estilo café. · <a href="https://vikingdogs.presentto.online" target="_blank" rel="noreferrer">vikingdogs.presentto.online</a> · 3219517348</small></footer>
+    <footer className="site-footer"><div><Link className="brand footer-brand" to="/"><img className="brand-logo" src={LOGO} alt="" /><span>vikingdogs</span></Link></div><div className="footer-links"><Link to="/catalogo">Catálogo</Link><a href={WHATSAPP_URL} target="_blank" rel="noreferrer">WhatsApp</a><span>Funza · Cra 19 Bis #9-15</span></div><small>© 2026 VikingDogs</small>    <small className="footer-service">Cuidado premium, paseo y bienestar canino para tu perro. · <a href="https://vikingdogs.presentto.online" target="_blank" rel="noreferrer">vikingdogs.presentto.online</a> · 3219517348</small></footer>
     {cartOpen && <CartDrawer cart={cart} changeQuantity={changeQuantity} removeFromCart={removeFromCart} total={total} isCombo={isCombo} onClose={() => setCartOpen(false)} onCatalog={() => { setCartOpen(false); navigate('/catalogo') }} />}
   </div>
 }
@@ -129,8 +129,8 @@ function CartDrawer({ cart, changeQuantity, removeFromCart, total, isCombo, onCl
 
 function Home() {
   usePageSeo({
-    title: 'VikingDogs · Cuidado y Bienestar Canino Estilo Café',
-    description: 'Productos prácticos y de alta gama para perros: cuidado, aseo, hidratación y aventuras. Envío gratis en toda Colombia. Pago contra entrega o Mercado Pago.',
+    title: 'VikingDogs · Cuidado y Accesorios para Perros',
+    description: 'Productos prácticos y de alta gama para perros: cuidado, aseo, hidratación y adiestramiento. Envío gratis en toda Colombia. Pago contra entrega o Mercado Pago.',
     path: '/',
     jsonLd: [
       {
@@ -157,7 +157,7 @@ function Home() {
       },
     ],
   })
-  return <Layout><section className="hero hero-simple container"><div className="hero-copy"><span className="eyebrow"><PawPrint size={14} /> Estilo Café · Colombia</span><h1>Bienestar canino<br /><em>con alma de café.</em></h1><p className="hero-minimal">Productos artesanales y prácticos para consentir a tu mejor amigo. Envío gratis a todo el país. Paga por Mercado Pago en artículos individuales o elige pago contra entrega.</p><div className="hero-actions"><Link to="/catalogo" className="button button-primary">Ver catálogo <ArrowRight size={17} /></Link><a href={WHATSAPP_URL} className="button button-quiet" target="_blank" rel="noreferrer">Hablemos</a></div></div></section>
+  return <Layout><section className="hero hero-simple container"><div className="hero-copy"><span className="eyebrow"><PawPrint size={14} /> Accesorios para perros · Colombia</span><h1>Todo para el cuidado<br /><em>de tu perro.</em></h1><p className="hero-minimal">Productos prácticos y de alta calidad para consentir a tu mejor amigo canino. Envío gratis a todo el país. Paga por Mercado Pago en artículos individuales o elige pago contra entrega.</p><div className="hero-actions"><Link to="/catalogo" className="button button-primary">Ver catálogo <ArrowRight size={17} /></Link><a href={WHATSAPP_URL} className="button button-quiet" target="_blank" rel="noreferrer">Hablemos</a></div></div></section>
     <section className="value-strip"><div className="container value-grid"><div><Truck /><span><strong>Envío gratis</strong><small>Menos de 5 días</small></span></div><div><PackageCheck /><span><strong>Contra entrega</strong><small>Compra segura</small></span></div><div><CreditCard /><span><strong>Mercado Pago</strong><small>Link único individual</small></span></div></div></section>
     <section className="home-bottom container"><span className="eyebrow">VikingDogs</span><h2>Lo esencial para<br /><em>cuidarlo mejor.</em></h2><Link to="/catalogo" className="button button-primary">Comprar ahora <ArrowRight size={16} /></Link></section>
   </Layout>
