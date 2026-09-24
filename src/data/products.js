@@ -208,7 +208,7 @@ export const PRODUCTS = [
     idealFor: 'Perros de pelo largo o densos y climas fríos.',
     ritual: 'Seca a distancia media, moviendo el aire en el sentido del pelo.',
     included: '1 secador eléctrico · boquillas',
-    price: 85000,
+    price: 56400,
     mercadopagoUrl: 'https://mpago.li/1ohJKBB',
     imageKey: 'dryer1',
     galleryKeys: ['dryer1', 'dryer2', 'dryer3', 'dryer4'],
