@@ -1,7 +1,3 @@
-export const COMBO_PRICE = 130000
-
-export const COMBO_IDS = ['cepillo-vapor', 'guante-quitapelos', 'bebedero-portatil', 'kit-peluqueria-aseo']
-
 export const PRODUCTS = [
   {
     id: 'cepillo-vapor',
@@ -20,7 +16,6 @@ export const PRODUCTS = [
     ritual: 'Cepilla suavemente en el sentido del pelo y limpia el producto después de usarlo.',
     included: '1 cepillo 3 en 1 · depósito de vapor',
     price: 30000,
-    mercadopagoUrl: 'https://mpago.li/1joZYzw',
     imageKey: 'brush1',
     galleryKeys: ['brush1', 'brush2'],
   },
@@ -41,7 +36,6 @@ export const PRODUCTS = [
     ritual: 'Coloca el guante y deslízalo suavemente siguiendo el crecimiento del pelo.',
     included: '1 guante de aseo',
     price: 25000,
-    mercadopagoUrl: 'https://mpago.li/2jEKm4w',
     imageKey: 'glove1',
     galleryKeys: ['glove1', 'glove2', 'glove3'],
   },
@@ -62,7 +56,6 @@ export const PRODUCTS = [
     ritual: 'Llena el depósito, presiona para liberar el agua y devuelve el sobrante a la botella.',
     included: '1 bebedero portátil',
     price: 30000,
-    mercadopagoUrl: 'https://mpago.li/15Dp9if',
     imageKey: 'bottle1',
     galleryKeys: ['bottle1', 'bottle2'],
   },
@@ -83,7 +76,6 @@ export const PRODUCTS = [
     ritual: 'Usa cada accesorio con calma, siguiendo el sentido del pelo y evitando zonas sensibles.',
     included: 'Máquina · guías · peine · tijeras · cortaúñas',
     price: 55000,
-    mercadopagoUrl: 'https://mpago.li/2nYL75N',
     imageKey: 'grooming1',
     galleryKeys: ['grooming1', 'grooming2', 'grooming3', 'grooming4', 'grooming5'],
   },
@@ -104,7 +96,6 @@ export const PRODUCTS = [
     ritual: 'Aplica la crema, cepilla en círculos suaves y enjuaga al finalizar.',
     included: 'Crema · cepillo · dedales',
     price: 35000,
-    mercadopagoUrl: 'https://mpago.li/2sV8YLC',
     imageKey: 'dental1',
     galleryKeys: ['dental1', 'dental2', 'dental3', 'dental4'],
   },
@@ -125,7 +116,6 @@ export const PRODUCTS = [
     ritual: 'Mide el pasillo o la puerta antes de instalar y revisa el cierre diario.',
     included: '1 barrera · kit de fijación',
     price: 39000,
-    mercadopagoUrl: 'https://mpago.li/2mBT91B',
     imageKey: 'barrier1',
     galleryKeys: ['barrier1', 'barrier2', 'barrier3'],
   },
@@ -146,7 +136,6 @@ export const PRODUCTS = [
     ritual: 'Aplica sobre el pelaje seco, masajea y cepilla bien hasta retirar el exceso.',
     included: '1 envase de baño en seco',
     price: 32000,
-    mercadopagoUrl: 'https://mpago.li/1iDnRfx',
     imageKey: 'drybath1',
     galleryKeys: ['drybath1'],
   },
@@ -167,7 +156,6 @@ export const PRODUCTS = [
     ritual: 'Añade la dosis diaria a su comida siguiendo las indicaciones del envase.',
     included: '1 envase de suplemento',
     price: 34900,
-    mercadopagoUrl: 'https://mpago.li/2EgdQh4',
     imageKey: 'supplement1',
     galleryKeys: ['supplement1'],
   },
@@ -188,7 +176,6 @@ export const PRODUCTS = [
     ritual: 'Presenta el collar sin activarlo, ajusta con holgura y introduce un modo por vez.',
     included: '1 collar digital · cargador · manual',
     price: 90000,
-    mercadopagoUrl: 'https://mpago.li/2ydxLeo',
     imageKey: 'collar1',
     galleryKeys: ['collar1', 'collar2', 'collar3', 'collar4'],
   },
@@ -209,7 +196,6 @@ export const PRODUCTS = [
     ritual: 'Seca a distancia media, moviendo el aire en el sentido del pelo.',
     included: '1 secador eléctrico · boquillas',
     price: 56400,
-    mercadopagoUrl: 'https://mpago.li/1ohJKBB',
     imageKey: 'dryer1',
     galleryKeys: ['dryer1', 'dryer2', 'dryer3', 'dryer4'],
   },
