@@ -14,5 +14,5 @@ export const discountedPrice = (price, id) => {
   return Math.round((price * (100 - discountPercent(id))) / 100 / 100) * 100
 }
 
-export const SEASON_LABEL = 'Temporada de descuentos'
+export const SEASON_LABEL = 'Temporada VikingDogs'
 export const SEASON_RANGE = '-20% a -40%'

@@ -1,15 +1,18 @@
-import React, { useEffect, useState } from 'react'
+import React, { lazy, Suspense, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, Check, ChevronDown, Menu, Minus, PackageCheck, PawPrint, Percent, Plus, ShoppingBag, Sparkles, Truck, X } from 'lucide-react'
-import { IMAGES, LOGO_SRC } from './data/images'
+import { ArrowRight, Check, ChevronDown, Menu, Minus, PackageCheck, PawPrint, Percent, Plus, ShoppingBag, Sparkles, Star, Truck, X } from 'lucide-react'
+import { HERO_DOG_SRC, IMAGES, LOGO_SRC } from './data/images'
 import { PRODUCTS as RAW_PRODUCTS } from './data/products'
 import { FORM_ENDPOINT, INSTAGRAM_HANDLE, INSTAGRAM_URL, SITE_NAME, SITE_URL, WHATSAPP_DISPLAY, WHATSAPP_NUMBER, WHATSAPP_URL } from './data/site'
 import { discountedPrice, discountPercent, SEASON_LABEL, SEASON_RANGE } from './data/pricing'
+import { REVIEWS } from './data/reviews'
 import { usePageSeo } from './seo'
+import { track, trackPurchase, productItem } from './analytics'
+import { FaqPage, ShippingPage, ReturnsPage, PrivacyPage, TermsPage } from './legal'
 import './styles.css'
 
-const PRODUCTS = RAW_PRODUCTS.map((product) => ({
+export const PRODUCTS = RAW_PRODUCTS.map((product) => ({
   ...product,
   discountPercent: discountPercent(product.id),
   salePrice: discountedPrice(product.price, product.id),
@@ -21,7 +24,7 @@ const LOGO = LOGO_SRC
 
 const absoluteUrl = (value) => (value ? (value.startsWith('/') ? `${SITE_URL}${value}` : value) : undefined)
 
-const formatCOP = (value) => value == null ? 'Consultar' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
+export const formatCOP = (value) => (value == null ? 'Consultar' : new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value))
 
 const productUrl = (product) => `${SITE_URL}/producto/${product.id}`
 
@@ -45,6 +48,30 @@ const productJsonLd = (product) => ({
     seller: { '@type': 'Organization', name: SITE_NAME },
   },
 })
+
+const breadcrumbJsonLd = (items) => ({
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.label,
+    item: absoluteUrl(item.path),
+  })),
+})
+
+function Breadcrumbs({ items, bare = false }) {
+  return <nav className={bare ? 'breadcrumbs breadcrumbs-bare' : 'breadcrumbs container'} aria-label="Migas de pan" data-reveal>
+    <ol>
+      {items.map((item, index) => <li key={item.path}>
+        {index < items.length - 1
+          ? <Link to={item.path}>{item.label}</Link>
+          : <span aria-current="page">{item.label}</span>}
+        {index < items.length - 1 && <span className="crumb-sep" aria-hidden="true">/</span>}
+      </li>)}
+    </ol>
+  </nav>
+}
 
 function useCart() {
   const [cart, setCart] = useState(() => {
@@ -77,7 +104,7 @@ function useCart() {
 }
 
 const CartContext = React.createContext(null)
-const useCartContext = () => React.useContext(CartContext)
+export const useCartContext = () => React.useContext(CartContext)
 
 function useReveal() {
   useEffect(() => {
@@ -99,41 +126,81 @@ function useReveal() {
   }, [])
 }
 
+function useFocusTrap(ref, onClose) {
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return undefined
+    const previous = document.activeElement
+    const selector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const first = node.querySelector(selector)
+    if (first) first.focus()
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
+      if (event.key !== 'Tab') return
+      const focusables = Array.from(node.querySelectorAll(selector)).filter((el) => el.offsetParent !== null)
+      if (!focusables.length) return
+      const firstEl = focusables[0]
+      const lastEl = focusables[focusables.length - 1]
+      if (event.shiftKey && document.activeElement === firstEl) { event.preventDefault(); lastEl.focus() }
+      else if (!event.shiftKey && document.activeElement === lastEl) { event.preventDefault(); firstEl.focus() }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previous && previous.focus) previous.focus()
+    }
+  }, [ref, onClose])
+}
+
 function App() {
   const cartState = useCart()
   return <CartContext.Provider value={cartState}><Routes>
     <Route path="/" element={<Home />} />
     <Route path="/catalogo" element={<Catalog />} />
     <Route path="/producto/:slug" element={<ProductPage />} />
-    <Route path="/checkout" element={<CheckoutPage />} />
+    <Route path="/checkout" element={<Suspense fallback={null}><CheckoutPage /></Suspense>} />
+    <Route path="/faq" element={<FaqPage />} />
+    <Route path="/envios" element={<ShippingPage />} />
+    <Route path="/devoluciones" element={<ReturnsPage />} />
+    <Route path="/privacidad" element={<PrivacyPage />} />
+    <Route path="/terminos" element={<TermsPage />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></CartContext.Provider>
 }
 
-function InstagramIcon({ size = 16 }) {
+export function InstagramIcon({ size = 16 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
 }
 
-function WhatsAppIcon({ size = 22 }) {
+export function WhatsAppIcon({ size = 22 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg>
 }
 
-function Layout({ children }) {
+export function Layout({ children }) {
   useReveal()
   const [menuOpen, setMenuOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [footerVisible, setFooterVisible] = useState(false)
+  const footerRef = React.useRef(null)
   const { itemsCount, cart, changeQuantity, removeFromCart, total } = useCartContext()
   const location = useLocation()
   const navigate = useNavigate()
   const closeMenu = () => setMenuOpen(false)
-  const marqueeText = `${SEASON_LABEL} · ${SEASON_RANGE} en todo el catálogo · Envío gratis en Colombia · Pago contra entrega · Síguenos en Instagram @${INSTAGRAM_HANDLE} · WhatsApp ${WHATSAPP_DISPLAY} ·`
+  const marqueeText = `VikingDogs · Envío gratis en Colombia · Pago contra entrega · Síguenos en Instagram @${INSTAGRAM_HANDLE} · WhatsApp ${WHATSAPP_DISPLAY} ·`
+  useEffect(() => {
+    const node = footerRef.current
+    if (!node || !('IntersectionObserver' in window)) return undefined
+    const observer = new IntersectionObserver(([entry]) => setFooterVisible(entry.isIntersecting), { threshold: 0.05 })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   return <div className="app-shell">
-    <div className="announcement"><div className="marquee"><div className="marquee-track"><span>{marqueeText}</span><span aria-hidden="true">{marqueeText}</span></div></div></div>
+    <div className="announcement"><div className="marquee" tabIndex={0} aria-label={`Anuncio: ${marqueeText}`}><div className="marquee-track" aria-hidden="true"><span>{marqueeText}</span><span>{marqueeText}</span></div></div></div>
     <header className="site-header">
       <button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Abrir menú"><Menu size={21} /></button>
       <Link className="brand" to="/" onClick={closeMenu} aria-label="VikingDogs inicio">
-        <img className="brand-logo" src={LOGO} alt="" />
+        <img className="brand-logo" src={LOGO} alt="" decoding="async" />
         <span>vikingdogs</span>
       </Link>
       <nav className={`main-nav ${menuOpen ? 'open' : ''}`}>
@@ -147,30 +214,47 @@ function Layout({ children }) {
       </button>
     </header>
     <main>{children}</main>
-    <footer className="site-footer">
-      <div><Link className="brand footer-brand" to="/"><img className="brand-logo" src={LOGO} alt="" /><span>vikingdogs</span></Link></div>
+    <footer className="site-footer" ref={footerRef}>
+      <div><Link className="brand footer-brand" to="/"><img className="brand-logo" src={LOGO} alt="" loading="lazy" decoding="async" /><span>vikingdogs</span></Link></div>
       <div className="footer-links">
         <Link to="/catalogo">Catálogo</Link>
         <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer"><InstagramIcon size={13} /> Instagram @{INSTAGRAM_HANDLE}</a>
         <a href={WHATSAPP_URL} target="_blank" rel="noreferrer">WhatsApp {WHATSAPP_DISPLAY}</a>
         <span>Funza · Cra 19 Bis #9-15</span>
       </div>
+      <nav className="footer-legal" aria-label="Información legal">
+        <Link to="/faq">Preguntas frecuentes</Link>
+        <Link to="/envios">Envíos</Link>
+        <Link to="/devoluciones">Cambios y devoluciones</Link>
+        <Link to="/privacidad">Privacidad</Link>
+        <Link to="/terminos">Términos</Link>
+      </nav>
       <small>© 2026 VikingDogs · Pago contra entrega · Envío gratis a todo Colombia</small>
       <small className="footer-service">Cuidado premium, paseo y bienestar canino para tu perro. · <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer">instagram.com/{INSTAGRAM_HANDLE}</a> · <a href={WHATSAPP_URL} target="_blank" rel="noreferrer">WhatsApp {WHATSAPP_DISPLAY}</a></small>
     </footer>
     {cartOpen && <CartDrawer cart={cart} changeQuantity={changeQuantity} removeFromCart={removeFromCart} total={total} savedAmount={savedAmount} onClose={() => setCartOpen(false)} onCatalog={() => { setCartOpen(false); navigate('/catalogo') }} />}
-    <a className="wa-float" href={WHATSAPP_URL} target="_blank" rel="noreferrer" aria-label={`Escríbenos por WhatsApp ${WHATSAPP_DISPLAY}`}>
+    <a className={`wa-float${footerVisible ? ' wa-float-hidden' : ''}`} href={WHATSAPP_URL} target="_blank" rel="noreferrer" aria-label={`Escríbenos por WhatsApp ${WHATSAPP_DISPLAY}`} aria-hidden={footerVisible} tabIndex={footerVisible ? -1 : undefined} onClick={() => track('contact', { channel: 'whatsapp', location: 'float' })}>
       <WhatsAppIcon size={24} /><span>¿Dudas? Escríbenos</span>
     </a>
   </div>
 }
 
 function CartDrawer({ cart, changeQuantity, removeFromCart, total, savedAmount, onClose, onCatalog }) {
-  return <div className="drawer-layer" onClick={onClose}><aside className="cart-drawer" onClick={(event) => event.stopPropagation()}>
+  const drawerRef = React.useRef(null)
+  useFocusTrap(drawerRef, onClose)
+  const touch = React.useRef(null)
+  const onTouchStart = (event) => { touch.current = event.touches[0].clientX }
+  const onTouchMove = (event) => {
+    if (touch.current == null) return
+    const dx = event.touches[0].clientX - touch.current
+    if (dx > 60) { touch.current = null; onClose() }
+  }
+  const onTouchEnd = () => { touch.current = null }
+  return <div className="drawer-layer" onClick={onClose}><aside className="cart-drawer" ref={drawerRef} onClick={(event) => event.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} aria-label="Carrito de compras">
     <div className="drawer-head"><div><span className="eyebrow">Tu selección</span><h2>Carrito</h2></div><button className="icon-button" onClick={onClose} aria-label="Cerrar carrito"><X size={21} /></button></div>
-    {cart.length === 0 ? <div className="empty-cart"><div className="empty-icon"><ShoppingBag /></div><h3>Tu carrito está vacío</h3><p>Descubre productos con descuentos de temporada y crea tu ritual de bienestar.</p><button className="button button-primary" onClick={onCatalog}>Explorar catálogo <ArrowRight size={16} /></button></div> : <>
+    {cart.length === 0 ? <div className="empty-cart"><div className="empty-icon"><ShoppingBag /></div><h3>Tu carrito está vacío</h3><p>Descubre productos para crear tu ritual de bienestar.</p><button className="button button-primary" onClick={onCatalog}>Explorar catálogo <ArrowRight size={16} /></button></div> : <>
       <div className="cart-items">{cart.map((item) => <div className="cart-item" key={item.id}><Thumb src={item.image} /><div className="cart-item-info"><strong>{item.name}</strong><span className="cart-price">{item.salePrice != null && item.price > item.salePrice && <del>{formatCOP(item.price)}</del>} {formatCOP(item.salePrice)}</span><div className="quantity"><button onClick={() => changeQuantity(item.id, -1)}><Minus size={13} /></button><b>{item.quantity}</b><button onClick={() => changeQuantity(item.id, 1)}><Plus size={13} /></button></div></div><button className="remove" onClick={() => removeFromCart(item.id)} aria-label={`Eliminar ${item.name}`}><X size={15} /></button></div>)}</div>
-      {savedAmount > 0 && <div className="saved-note"><Percent size={14} /> Ahorras {formatCOP(savedAmount)} con los descuentos de temporada</div>}
+      {savedAmount > 0 && <div className="saved-note"><Percent size={14} /> Ahorras {formatCOP(savedAmount)} en tu pedido</div>}
       <div className="drawer-total"><span>Total</span><strong>{formatCOP(total)}</strong></div>
       <Link to="/checkout" className="button button-primary button-wide" onClick={onClose}>Pagar contra entrega <ArrowRight size={16} /></Link>
       <button className="text-button" onClick={onCatalog}>Seguir explorando</button>
@@ -181,7 +265,7 @@ function CartDrawer({ cart, changeQuantity, removeFromCart, total, savedAmount, 
 function Home() {
   usePageSeo({
     title: 'VikingDogs · Cuidado y Accesorios para Perros',
-    description: `Productos prácticos y de alta gama para perros: cuidado, aseo, hidratación y adiestramiento. ${SEASON_LABEL} ${SEASON_RANGE}. Envío gratis en toda Colombia. Pago contra entrega.`,
+    description: 'Productos prácticos y de alta gama para perros: cuidado, aseo, hidratación y adiestramiento. Envío gratis en toda Colombia y pago contra entrega.',
     path: '/',
     jsonLd: [
       {
@@ -214,15 +298,15 @@ function Home() {
       <div className="hero-copy" data-reveal>
         <span className="eyebrow"><PawPrint size={14} /> Accesorios para perros · Colombia</span>
         <h1>Todo para el cuidado<br /><em>de tu perro.</em></h1>
-        <p className="hero-minimal">Productos prácticos y de alta calidad para consentir a tu mejor amigo canino. Envío gratis a todo el país, pago contra entrega y {SEASON_RANGE} en temporada.</p>
+        <p className="hero-minimal">Productos prácticos y de alta calidad para consentir a tu mejor amigo canino. Envío gratis a todo el país y pago contra entrega.</p>
         <div className="hero-actions">
-          <Link to="/catalogo" className="button button-primary button-pulse">Ver catálogo con descuentos <ArrowRight size={17} /></Link>
+          <Link to="/catalogo" className="button button-primary button-pulse">Ver catálogo <ArrowRight size={17} /></Link>
           <a href={WHATSAPP_URL} className="button button-quiet" target="_blank" rel="noreferrer">Comprar por WhatsApp</a>
         </div>
         <div className="hero-trust">
           <span><Truck size={13} /> Envío gratis</span>
           <span><PackageCheck size={13} /> Pago contra entrega</span>
-          <span><Percent size={13} /> {SEASON_RANGE} de descuento</span>
+          <span><Percent size={13} /> {SEASON_RANGE} en temporada</span>
           <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer"><InstagramIcon size={13} /> @{INSTAGRAM_HANDLE}</a>
         </div>
       </div>
@@ -230,7 +314,7 @@ function Home() {
         <div className="hero-orb hero-float">
           <span className="hero-ring hero-ring-one"></span>
           <span className="hero-ring hero-ring-two"></span>
-          <img className="hero-logo" src={LOGO} alt="VikingDogs" />
+          <img className="hero-photo" src={HERO_DOG_SRC} alt="Cachorro golden retriever feliz" width="760" height="760" fetchPriority="high" decoding="async" />
         </div>
         <span className="hero-discount-badge">{SEASON_RANGE}<small>en temporada</small></span>
         <span className="hero-ship-badge"><Truck size={14} /> Envío gratis a todo Colombia</span>
@@ -241,14 +325,29 @@ function Home() {
       <div><PackageCheck /><span><strong>Pago contra entrega</strong><small>Pagas al recibir tu pedido</small></span></div>
       <div><Percent /><span><strong>{SEASON_LABEL}</strong><small>{SEASON_RANGE} en el catálogo</small></span></div>
     </div></section>
+    <section className="reviews-section container" data-reveal>
+      <div className="reviews-heading">
+        <span className="eyebrow">Reseñas</span>
+        <h2>Lo que dicen las familias VikingDogs</h2>
+      </div>
+      <div className="reviews-grid">
+        {REVIEWS.map((review) => <figure className="review-card" key={review.id}>
+          <div className="review-stars" aria-label={`${review.rating} de 5 estrellas`}>
+            {Array.from({ length: review.rating }, (_, i) => <Star key={i} size={14} fill="currentColor" strokeWidth={0} aria-hidden="true" />)}
+          </div>
+          <blockquote>“{review.text}”</blockquote>
+          <figcaption><strong>{review.name}</strong><span>{review.city}</span></figcaption>
+        </figure>)}
+      </div>
+    </section>
     <section className="home-bottom container" data-reveal>
       <div>
-        <span className="eyebrow">VikingDogs · {SEASON_LABEL}</span>
-        <h2>Descuentos de temporada<br /><em>por tiempo limitado.</em></h2>
-        <p className="home-bottom-copy">Aprovecha hasta -40% en accesorios para el cuidado, el aseo y las aventuras de tu perro. Envío gratis y pago contra entrega en todos los pedidos.</p>
+        <span className="eyebrow">VikingDogs</span>
+        <h2>Todo lo que tu perro necesita<br /><em>con envío gratis.</em></h2>
+        <p className="home-bottom-copy">Productos prácticos para el cuidado, el aseo y las aventuras de tu mejor amigo, con pago contra entrega y envío gratis a todo Colombia.</p>
       </div>
       <div className="home-bottom-actions">
-        <Link to="/catalogo" className="button button-primary button-pulse">Comprar ahora <ArrowRight size={16} /></Link>
+        <Link to="/catalogo" className="button button-primary button-pulse">Ver catálogo <ArrowRight size={16} /></Link>
         <a href={WHATSAPP_URL} className="button button-quiet" target="_blank" rel="noreferrer">Hablemos por WhatsApp</a>
       </div>
     </section>
@@ -259,7 +358,7 @@ function Catalog() {
   const { addToCart, itemsCount } = useCartContext()
   const [notice, setNotice] = useState('')
   const noteTitle = 'Envío gratis en todo el catálogo.'
-  const noteText = `${PRODUCTS.length} productos con ${SEASON_RANGE} en temporada · Calidad garantizada · Pago contra entrega.`
+  const noteText = `${PRODUCTS.length} productos disponibles · Calidad garantizada · Pago contra entrega.`
   const itemListLd = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -273,45 +372,45 @@ function Catalog() {
   }
   usePageSeo({
     title: 'Catálogo · VikingDogs',
-    description: `10 productos para el cuidado, aseo y aventuras de tu perro. ${SEASON_LABEL} ${SEASON_RANGE}. Envío gratis en todos los pedidos. Pago contra entrega.`,
+    description: '10 productos para el cuidado, aseo y aventuras de tu perro. Envío gratis en todos los pedidos y pago contra entrega.',
     path: '/catalogo',
-    jsonLd: itemListLd,
+    jsonLd: [itemListLd, breadcrumbJsonLd([{ label: 'Inicio', path: '/' }, { label: 'Catálogo', path: '/catalogo' }])],
   })
   const add = (product) => { addToCart(product); setNotice(`${product.shortName} se agregó a tu carrito`); setTimeout(() => setNotice(''), 2400) }
   return <Layout>
+    <Breadcrumbs items={[{ label: 'Inicio', path: '/' }, { label: 'Catálogo', path: '/catalogo' }]} />
     <section className="catalog-hero container" data-reveal>
       <div>
-        <span className="eyebrow"><PawPrint size={14} /> VikingDogs · {SEASON_LABEL}</span>
+        <span className="eyebrow"><PawPrint size={14} /> VikingDogs</span>
         <h1>Elige su<br /><em>cuidado.</em></h1>
       </div>
-      <img className="catalog-hero-logo hero-float" src={LOGO} alt="VikingDogs" />
       <p>{PRODUCTS.length} productos · Envío gratis · {SEASON_RANGE} · Pago contra entrega</p>
     </section>
     <section className="catalog-section container">
-      <div className="section-heading" data-reveal><div><span className="eyebrow">Catálogo</span><h2>Productos en oferta</h2></div><span className="stock-note"><span className="stock-dot"></span> Unidades seleccionadas · descuentos de temporada</span></div>
+      <div className="section-heading" data-reveal><div><span className="eyebrow">Catálogo</span><h2>Productos</h2></div><span className="stock-note"><span className="stock-dot"></span> Unidades seleccionadas</span></div>
       <div className="product-grid">{PRODUCTS.map((product, index) => <ProductCard key={product.id} product={product} index={index} onAdd={() => add(product)} />)}</div>
       <div className="limited-note" data-reveal><Sparkles size={20} /><div><strong>{noteTitle}</strong><span>{noteText}</span></div><a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="underlink">Comprar por WhatsApp <ArrowRight size={15} /></a></div>
     </section>
     <section className="season-section container" data-reveal>
       <div className="season-copy">
-        <span className="eyebrow">Ofertas de temporada</span>
-        <h2>{SEASON_LABEL}<br /><em>para su mejor amigo.</em></h2>
-        <p className="season-lead">Durante la temporada VikingDogs encontrarás descuentos del 20% al 40% en accesorios seleccionados. Sin complicaciones: eliges, pides y pagas cuando llegue a tu puerta.</p>
+        <span className="eyebrow">Temporada VikingDogs</span>
+        <h2>Cuida a tu mejor amigo<br /><em>por menos.</em></h2>
+        <p className="season-lead">Precios especiales del 20% al 40% en productos seleccionados durante esta temporada. Sin complicaciones: eliges, pides y pagas cuando llegue a tu puerta.</p>
         <div className="season-pillars">
-          <div><span>01</span><strong>{SEASON_RANGE}</strong><small>Descuentos en el catálogo</small></div>
+          <div><span>01</span><strong>{SEASON_RANGE}</strong><small>Precios de temporada</small></div>
           <div><span>02</span><strong>Contra entrega</strong><small>Pagas al recibir tu pedido</small></div>
           <div><span>03</span><strong>Envío gratis</strong><small>A todo Colombia</small></div>
         </div>
-        <p className="season-rhythm">Oferta por tiempo limitado. Consulta disponibilidad y arma la rutina perfecta para tu perro hoy mismo.</p>
+        <p className="season-rhythm">Precios especiales por tiempo limitado. Consulta disponibilidad y arma la rutina perfecta para tu perro hoy mismo.</p>
         <div className="season-actions">
-          <Link to="/catalogo" className="button button-light button-pulse">Ver todas las ofertas <ArrowRight size={16} /></Link>
+          <Link to="/catalogo" className="button button-light button-pulse">Ver catálogo <ArrowRight size={16} /></Link>
           <a href={WHATSAPP_URL} className="button button-outline" target="_blank" rel="noreferrer">Comprar por WhatsApp</a>
         </div>
       </div>
       <div className="season-visual">
         <span className="season-ring season-ring-one"></span>
         <span className="season-ring season-ring-two"></span>
-        <img className="season-logo hero-float" src={LOGO} alt="VikingDogs" />
+        <img className="season-logo hero-float" src={LOGO} alt="VikingDogs" loading="lazy" decoding="async" />
         <div className="season-badge-pop">-20%<span>a</span>-40%</div>
       </div>
     </section>
@@ -319,14 +418,14 @@ function Catalog() {
   </Layout>
 }
 
-function ProductMedia({ product, src, className = '' }) {
-  if (src) return <img src={src} alt={product.name} />
-  return <div className={`product-placeholder ${className}`}><img src={LOGO} alt="" /><span>{product.comingSoon ? 'Próximamente' : 'VikingDogs'}</span></div>
+function ProductMedia({ product, src, className = '', eager = false }) {
+  if (src) return <img src={src} alt={product.name} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+  return <div className={`product-placeholder ${className}`}><img src={LOGO} alt="" loading="lazy" decoding="async" /><span>{product.comingSoon ? 'Próximamente' : 'VikingDogs'}</span></div>
 }
 
-function Thumb({ src, alt = '' }) {
-  if (src) return <img src={src} alt={alt} />
-  return <div className="thumb-empty" aria-hidden="true"><img src={LOGO} alt="" /></div>
+export function Thumb({ src, alt = '' }) {
+  if (src) return <img src={src} alt={alt} loading="lazy" decoding="async" />
+  return <div className="thumb-empty" aria-hidden="true"><img src={LOGO} alt="" loading="lazy" decoding="async" /></div>
 }
 
 function ProductCard({ product, index, onAdd }) {
@@ -353,15 +452,34 @@ function ProductPage() {
     title: product ? `${product.name} · VikingDogs` : 'Producto · VikingDogs',
     description: product ? `${product.detail} Envío gratis en todos los pedidos. Pago contra entrega.` : 'Producto VikingDogs.',
     path: product ? `/producto/${product.id}` : '/catalogo',
-    jsonLd: product ? productJsonLd(product) : null,
+    jsonLd: product
+      ? [productJsonLd(product), breadcrumbJsonLd([
+          { label: 'Inicio', path: '/' },
+          { label: 'Catálogo', path: '/catalogo' },
+          { label: product.name, path: `/producto/${product.id}` },
+        ])]
+      : null,
   })
+  useEffect(() => {
+    if (product && !product.comingSoon) track('view_item', { items: [productItem(product)] })
+  }, [product])
   if (!product) return <Navigate to="/catalogo" replace />
-  const directBuy = () => { if (!fromCart) addToCart(product, quantity); navigate('/checkout') }
-  const add = () => { addToCart(product, quantity); setAdded(true); setTimeout(() => setAdded(false), 2200) }
+  const directBuy = () => {
+    const items = [productItem(product, quantity)]
+    if (!fromCart) { addToCart(product, quantity); track('add_to_cart', { items, value: (product.salePrice ?? 0) * quantity }) }
+    track('begin_checkout', { items, value: (product.salePrice ?? 0) * quantity })
+    navigate('/checkout')
+  }
+  const add = () => {
+    addToCart(product, quantity)
+    track('add_to_cart', { items: [productItem(product, quantity)], value: (product.salePrice ?? 0) * quantity })
+    setAdded(true)
+    setTimeout(() => setAdded(false), 2200)
+  }
   const gallery = product.gallery.length ? product.gallery : [product.image].filter(Boolean)
-  return <Layout><section className="product-page container"><Link to="/catalogo" className="back-link">← Catálogo</Link><div className="product-detail">
-    <div data-reveal><div className="detail-image"><ProductMedia product={product} src={selectedImage} /><span className="detail-stamp"><PawPrint size={16} /> vikingdogs</span>{!soon && product.discountPercent != null && <span className="discount-pill detail-discount">-{product.discountPercent}%</span>}</div>{gallery.length > 1 && <div className="detail-gallery">{gallery.map((image, index) => <button className={selectedImage === image ? 'selected' : ''} key={`${image}-${index}`} onClick={() => setSelectedImage(image)}><img src={image} alt={`${product.name} vista ${index + 1}`} /></button>)}</div>}</div>
-    <div className="detail-copy" data-reveal><span className="eyebrow">{product.category}</span><span className="detail-badge">{product.badge}</span><h1>{product.name}</h1><p className="detail-description">{product.detail}</p><ul className="benefit-list">{product.benefits.map((benefit) => <li key={benefit}><Check size={15} /> {benefit}</li>)}</ul><div className="detail-price">{soon ? <strong className="soon-label">Próximamente</strong> : <div className="price-line">{product.price > product.salePrice && <del>{formatCOP(product.price)}</del>}<strong>{formatCOP(product.salePrice)}</strong></div>}<span className="free-shipping">Envío gratis</span><span>{soon ? 'Avísanos por WhatsApp' : 'Pago contra entrega'}</span></div>{soon ? <div className="detail-actions"><a className="button button-primary buy-button" href={notifyUrl(product)} target="_blank" rel="noreferrer">Avísame cuando llegue <ArrowRight size={17} /></a></div> : <div className="detail-actions"><div className="quantity large"><button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus size={15} /></button><b>{quantity}</b><button onClick={() => setQuantity(quantity + 1)}><Plus size={15} /></button></div><button className="button button-primary buy-button button-pulse" onClick={directBuy}>Comprar · pagar contra entrega <ArrowRight size={17} /></button><button className="button button-outline cart-add" onClick={add}><ShoppingBag size={17} /> Agregar</button></div>}{added && <div className="added-message"><Check size={16} /> Agregado al carrito</div>}</div>
+  return <Layout><section className="product-page container"><Breadcrumbs bare items={[{ label: 'Inicio', path: '/' }, { label: 'Catálogo', path: '/catalogo' }, { label: product.name, path: `/producto/${product.id}` }]} /><Link to="/catalogo" className="back-link">← Catálogo</Link><div className="product-detail">
+    <div data-reveal><div className="detail-image"><ProductMedia product={product} src={selectedImage} eager /><span className="detail-stamp"><PawPrint size={16} /> vikingdogs</span>{!soon && product.discountPercent != null && <span className="discount-pill detail-discount">-{product.discountPercent}%</span>}</div>{gallery.length > 1 && <div className="detail-gallery">{gallery.map((image, index) => <button className={selectedImage === image ? 'selected' : ''} key={`${image}-${index}`} onClick={() => setSelectedImage(image)}><img src={image} alt={`${product.name} vista ${index + 1}`} loading="lazy" decoding="async" /></button>)}</div>}</div>
+    <div className="detail-copy" data-reveal><span className="eyebrow">{product.category}</span><span className="detail-badge">{product.badge}</span><h1>{product.name}</h1><p className="detail-description">{product.detail}</p><ul className="benefit-list">{product.benefits.map((benefit) => <li key={benefit}><Check size={15} /> {benefit}</li>)}</ul><div className="detail-price">{soon ? <strong className="soon-label">Próximamente</strong> : <div className="price-line">{product.price > product.salePrice && <del>{formatCOP(product.price)}</del>}<strong>{formatCOP(product.salePrice)}</strong></div>}<span className="free-shipping">Envío gratis</span><span>{soon ? 'Avísanos por WhatsApp' : 'Pago contra entrega'}</span></div>{soon ? <div className="detail-actions"><a className="button button-primary buy-button" href={notifyUrl(product)} target="_blank" rel="noreferrer">Avísame cuando llegue <ArrowRight size={17} /></a></div> : <div className="detail-actions"><div className="quantity large"><button onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus size={15} /></button><b>{quantity}</b><button onClick={() => setQuantity(quantity + 1)}><Plus size={15} /></button></div><button className="button button-primary buy-button button-pulse" onClick={directBuy}>Comprar ahora <ArrowRight size={17} /></button><button className="button button-outline cart-add" onClick={add}><ShoppingBag size={17} /> Agregar</button></div>}{added && <div className="added-message"><Check size={16} /> Agregado al carrito</div>}</div>
   </div>
   <div className="product-why" data-reveal>
     <div className="product-why-main"><span className="eyebrow">Por qué le encantará</span><h2>{product.whyTitle}</h2><p>{product.whyText}</p></div>
@@ -371,114 +489,11 @@ function ProductPage() {
       <div><span className="info-label">Incluye</span><strong>{product.included}</strong></div>
     </div>
   </div>
-  <div className="detail-cta-strip" data-reveal><div><strong>{SEASON_LABEL}: {SEASON_RANGE}</strong><span>Envío gratis a todo Colombia · Pago contra entrega</span></div><div className="detail-cta-actions"><a className="button button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} /> WhatsApp {WHATSAPP_DISPLAY}</a><a className="button button-quiet" href={INSTAGRAM_URL} target="_blank" rel="noreferrer"><InstagramIcon size={15} /> @{INSTAGRAM_HANDLE}</a></div></div>
+  <div className="detail-cta-strip" data-reveal><div><strong>Envío gratis a todo Colombia</strong><span>Pago contra entrega · {SEASON_RANGE} en temporada</span></div><div className="detail-cta-actions"><a className="button button-primary" href={WHATSAPP_URL} target="_blank" rel="noreferrer" onClick={() => track('contact', { channel: 'whatsapp', location: 'product_cta', item_id: product.id })}><WhatsAppIcon size={16} /> WhatsApp {WHATSAPP_DISPLAY}</a><a className="button button-quiet" href={INSTAGRAM_URL} target="_blank" rel="noreferrer" onClick={() => track('contact', { channel: 'instagram', location: 'product_cta' })}><InstagramIcon size={15} /> @{INSTAGRAM_HANDLE}</a></div></div>
   </section></Layout>
 }
 
-function CheckoutPage() {
-  const { cart, total, clearCart } = useCartContext()
-  const navigate = useNavigate()
-  const product = cart[0] || PRODUCTS[0]
-  usePageSeo({
-    title: 'Checkout · VikingDogs',
-    description: 'Confirma tu pedido VikingDogs. Pago contra entrega.',
-    path: '/checkout',
-    noindex: true,
-  })
-  if (!cart.length) return <Layout><section className="checkout-empty container"><span className="eyebrow">VikingDogs</span><h1>Tu carrito está vacío</h1><p>Agrega productos para continuar con tu pedido.</p><Link className="button button-primary" to="/catalogo">Ver catálogo <ArrowRight size={16} /></Link></section></Layout>
-  return <Layout><section className="checkout-page container"><Checkout product={product} quantity={cart[0].quantity} cart={cart} total={total} standalone onClose={() => navigate(-1)} onSuccess={clearCart} /></section></Layout>
-}
-
-function Checkout({ product, quantity, cart, total, standalone = false, onClose, onSuccess }) {
-  const navigate = useNavigate()
-  const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState('')
-
-  const isSingleItemPurchase = cart.length === 1 && cart[0].quantity >= 1
-  const singleProduct = isSingleItemPurchase ? cart[0] : null
-
-  const [form, setForm] = useState({
-    phone: '',
-    email: '',
-    firstName: '',
-    lastName: '',
-    document: '',
-    tag: '',
-    providerNotes: '',
-    internalNotes: '',
-    officeDelivery: false,
-    department: '',
-    addressInfo: '',
-    payment: 'Pago contra entrega'
-  })
-
-  const update = (event) => {
-    const { name, value, type, checked } = event.target
-    setForm((current) => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
-  }
-
-  const submit = async (event) => {
-    event.preventDefault()
-    setSubmitting(true)
-    setError('')
-
-    const summary = cart.map((item) => `${item.name} x${item.quantity}`).join(' | ') || `${product.name} x${quantity}`
-    const payload = {
-      ...form,
-      _replyto: form.email,
-      phone: `+57 ${form.phone}`,
-      _subject: `Nuevo pedido VikingDogs — ${form.firstName} ${form.lastName} (Pago contra entrega)`,
-      products: summary,
-      total: formatCOP(total),
-      shipping: 'Envío gratis',
-      source: 'Tienda online VikingDogs'
-    }
-
-    try {
-      const response = await fetch(FORM_ENDPOINT, {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      if (!response.ok) throw new Error('formspree')
-      setSuccess(true)
-      onSuccess?.()
-    } catch {
-      setError('No pudimos enviar el pedido. Revisa tu conexión o escríbenos por WhatsApp.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return <div className={standalone ? 'checkout-page-inner' : 'checkout-layer'}><div className="checkout-modal"><button className="modal-close" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>{success ? <div className="success-state"><div className="success-icon"><Check /></div><span className="eyebrow">Pedido recibido</span><h2>Gracias por elegir<br /><em>VikingDogs.</em></h2><p>Recibimos tus datos. Te contactaremos muy pronto para confirmar tu pedido y coordinar la entrega. Pagas contra entrega al recibirlo.</p><a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="button button-primary" style={{ marginBottom: '12px' }}><WhatsAppIcon size={16} /> Seguir mi compra por WhatsApp</a><a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="button button-quiet" style={{ marginBottom: '12px' }}><InstagramIcon size={15} /> @{INSTAGRAM_HANDLE}</a><button className="text-button" onClick={() => navigate('/catalogo')}>Volver al catálogo</button></div> : <><div className="checkout-header"><span className="eyebrow">Último paso</span><h2>Confirma tu pedido</h2><p>{isSingleItemPurchase ? `${singleProduct.name} · ${singleProduct.quantity} ${singleProduct.quantity === 1 ? 'unidad' : 'unidades'}` : 'Varios productos en carrito'} · Pago contra entrega</p></div><div className="checkout-order-summary">{cart.map((item) => <div className="checkout-order-item" key={item.id}><Thumb src={item.image} /><span><strong>{item.name}</strong><small>Cantidad: {item.quantity} · Envío gratis</small></span><b>{item.salePrice != null && item.price > item.salePrice && <del>{formatCOP(item.price)}</del>} {formatCOP(item.salePrice)}</b></div>)}</div><form onSubmit={submit}>
-        <div className="form-section"><h3>Datos del cliente para envío</h3><div className="form-grid">
-          <label>Teléfono<div className="phone-field"><span>(+57)</span><input required name="phone" type="tel" value={form.phone} onChange={update} placeholder="300 000 0000" /></div></label>
-          <label>Correo<input required name="email" type="email" value={form.email} onChange={update} placeholder="tu@correo.com" /></label>
-          <label>Nombre<input required name="firstName" value={form.firstName} onChange={update} placeholder="Tu nombre" /></label>
-          <label>Apellido<input required name="lastName" value={form.lastName} onChange={update} placeholder="Tu apellido" /></label>
-          <label>Cédula o documento<input required name="document" value={form.document} onChange={update} placeholder="Número de documento" /></label>
-          <label>Etiqueta <span className="optional">(separadas por coma)</span><input name="tag" value={form.tag} onChange={update} placeholder="Casa, trabajo" /></label>
-        </div></div>
-        <div className="form-section"><h3>Dirección de entrega</h3>
-          <label>Departamento<select required name="department" value={form.department} onChange={update}><option value="">Selecciona una opción</option><option>Bogotá D.C.</option><option>Cundinamarca</option><option>Antioquia</option><option>Valle del Cauca</option><option>Atlántico</option><option>Santander</option><option>Otro departamento</option></select><ChevronDown className="select-icon" size={16} /></label>
-          <label>Información adicional de la dirección<textarea required name="addressInfo" value={form.addressInfo} onChange={update} placeholder="Dirección, barrio, ciudad y referencias" rows="3" /></label>
-          <label className="check-row"><input type="checkbox" name="officeDelivery" checked={form.officeDelivery} onChange={update} /><span>Entregar en una oficina de la transportadora</span></label>
-          <div className="form-grid">
-            <label>Notas para el proveedor<textarea name="providerNotes" value={form.providerNotes} onChange={update} placeholder="Indicaciones para la entrega" rows="2" /></label>
-            <label>Notas internas<textarea name="internalNotes" value={form.internalNotes} onChange={update} placeholder="Algo más que debamos saber" rows="2" /></label>
-          </div>
-        </div>
-        <div className="form-section"><h3>Método de pago</h3>
-          <div className="payment-static"><Check size={18} /><div><strong>Pago contra entrega</strong><small>Pagas en efectivo al recibir tu pedido en casa u oficina. Sin pagos en línea, sin anticipos.</small></div></div>
-        </div>
-        {error && <div className="form-error">{error}</div>}
-        <div className="checkout-total"><span>Total del pedido</span><strong>{formatCOP(total)}</strong></div>
-        <button disabled={submitting} className="button button-primary button-wide submit-button button-pulse" type="submit">{submitting ? 'Enviando pedido y datos…' : 'Confirmar pedido · Pago contra entrega'} {!submitting && <ArrowRight size={17} />}</button>
-        <p className="secure-note">Tus datos y pedido se envían de forma segura a Formspree. Envío gratis a todo Colombia.</p>
-        <p className="secure-note">¿Dudas? Escríbenos al WhatsApp {WHATSAPP_DISPLAY} o síguenos en Instagram @{INSTAGRAM_HANDLE}.</p>
-      </form></>}</div></div>
-}
+const CheckoutPage = lazy(() => import('./checkout.jsx').then((m) => ({ default: m.CheckoutPage })))
 
 function Root() { return <BrowserRouter><App /></BrowserRouter> }
 createRoot(document.getElementById('root')).render(<Root />)

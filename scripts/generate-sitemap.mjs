@@ -10,6 +10,11 @@ const out = join(root, 'public', 'sitemap.xml')
 const routes = [
   { loc: '/', changefreq: 'weekly', priority: '1.0' },
   { loc: '/catalogo', changefreq: 'weekly', priority: '0.9' },
+  { loc: '/faq', changefreq: 'monthly', priority: '0.6' },
+  { loc: '/envios', changefreq: 'monthly', priority: '0.6' },
+  { loc: '/devoluciones', changefreq: 'monthly', priority: '0.5' },
+  { loc: '/privacidad', changefreq: 'yearly', priority: '0.3' },
+  { loc: '/terminos', changefreq: 'yearly', priority: '0.3' },
   ...PRODUCTS.map((product) => ({
     loc: `/producto/${product.id}`,
     changefreq: product.comingSoon ? 'weekly' : 'monthly',

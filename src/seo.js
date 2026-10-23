@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { SITE_URL } from './data/site'
+import { track } from './analytics'
 
 const upsertMeta = (attr, key, content) => {
   if (!content) return
@@ -52,6 +53,7 @@ export function usePageSeo({ title, description, path = '/', noindex = false, js
     upsertMeta('property', 'og:title', title)
     upsertMeta('property', 'og:description', description)
     upsertJsonLd(serializedLd ? JSON.parse(serializedLd) : null)
+    track('page_view', { page_path: path, page_title: title })
     return () => upsertJsonLd(null)
   }, [title, description, path, noindex, serializedLd])
 }

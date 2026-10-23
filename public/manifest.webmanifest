@@ -1,11 +1,23 @@
 {
   "name": "VikingDogs · Cuidado para tu mejor amigo",
   "short_name": "VikingDogs",
-  "description": "Productos prácticos para cuidar y consentir a tu perro. Envío gratis, pago contra entrega y descuentos de temporada.",
+  "description": "Productos prácticos para cuidar y consentir a tu perro. Envío gratis, pago contra entrega y Temporada VikingDogs.",
   "lang": "es-CO",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#eff3f9",
-  "theme_color": "#0d1524"
+  "theme_color": "#0d1524",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
